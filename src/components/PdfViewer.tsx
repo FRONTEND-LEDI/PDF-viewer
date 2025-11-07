@@ -24,6 +24,7 @@ const PdfViewer: React.FC<Props> = ({ url, initialPage }) => {
   const [pageHeights, setPageHeights] = useState<number[]>([]);
   const lastSentMessage = useRef<{page: number, total: number}>({page: 0, total: 0});
   const scrollTimeoutRef = useRef<number | null>(null);
+  const isDocumentReady = useRef(false);
 
   /**
    * Función para navegar a una página específica
@@ -74,6 +75,19 @@ const PdfViewer: React.FC<Props> = ({ url, initialPage }) => {
         finished: pageNumber === numPages
       })
     );
+
+    // Enviar confirmación de navegación inicial
+    if (isInitialScroll.current) {
+      setTimeout(() => {
+        (window as any).ReactNativeWebView?.postMessage(
+          JSON.stringify({
+            type: "PAGE_CHANGE_CONFIRMED",
+            page: pageNumber,
+            total: numPages
+          })
+        );
+      }, 300);
+    }
   };
 
   /**
@@ -127,6 +141,9 @@ const PdfViewer: React.FC<Props> = ({ url, initialPage }) => {
         endMarker.style.width = '1px';
         containerRef.current?.appendChild(endMarker);
 
+        // Marcar documento como listo
+        isDocumentReady.current = true;
+
         // Enviar información al WebView
         (window as any).ReactNativeWebView?.postMessage(
           JSON.stringify({
@@ -136,12 +153,12 @@ const PdfViewer: React.FC<Props> = ({ url, initialPage }) => {
           })
         );
 
-        // Scroll inicial
+        // Scroll inicial con timeout aumentado para asegurar renderizado completo
         if (isInitialScroll.current && startPage > 1) {
           setTimeout(() => {
             scrollToPage(startPage);
             isInitialScroll.current = false;
-          }, 500);
+          }, 800);
         } else {
           isInitialScroll.current = false;
         }
